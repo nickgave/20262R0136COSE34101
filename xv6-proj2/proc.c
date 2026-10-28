@@ -604,13 +604,12 @@ setnice(int pid, int nice)
     return -1;
 
   struct proc *p;
-  struct proc *curr = myproc();
 
   acquire(&ptable.lock);
   
   for( p = ptable.proc; p < &ptable.proc[NPROC]; p++){
     if(p->pid==pid && p->state!=UNUSED && p->state!=ZOMBIE){
-      int changed = (p->priority != nice)
+      int changed = (p->priority != nice);
       if(p->state == RUNNABLE) dequeue(p);
       p->priority = nice;
       if(p->state == RUNNABLE) enqueue(p);
