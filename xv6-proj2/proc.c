@@ -609,7 +609,7 @@ setnice(int pid, int nice)
   
   for( p = ptable.proc; p < &ptable.proc[NPROC]; p++){
     if(p->pid==pid && p->state!=UNUSED && p->state!=ZOMBIE){
-      int changed = (p->priority != nice);
+      int changed = (p->priority != nice && p->state == RUNNABLE);
       if(p->state == RUNNABLE) dequeue(p);
       p->priority = nice;
       if(p->state == RUNNABLE) enqueue(p);
