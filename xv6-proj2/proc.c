@@ -398,6 +398,8 @@ scheduler(void)
     p = rqueue.head;
     
     if(p) {
+      dequeue(p);
+
       c->proc = p;
       switchuvm(p);
       p->state = RUNNING;
@@ -406,9 +408,10 @@ scheduler(void)
       switchkvm();
 
       c->proc = 0;
-
-      release(&ptable.lock);
+    
     }
+
+    release(&ptable.lock);
   }
 }
 
@@ -519,8 +522,10 @@ wakeup1(void *chan)
   struct proc *p;
 
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
-    if(p->state == SLEEPING && p->chan == chan)
+    if(p->state == SLEEPING && p->chan == chan) {
       p->state = RUNNABLE;
+      enqueue(p);
+    }
 }
 
 // Wake up all processes sleeping on chan.
@@ -545,8 +550,10 @@ kill(int pid)
     if(p->pid == pid){
       p->killed = 1;
       // Wake process from sleep if necessary.
-      if(p->state == SLEEPING)
+      if(p->state == SLEEPING) {
         p->state = RUNNABLE;
+        enqueue(p);
+      }
       release(&ptable.lock);
       return 0;
     }
@@ -600,14 +607,17 @@ setnice(int pid, int nice)
 
   struct proc *p;
   acquire(&ptable.lock);
+  dequeue(p);
   for( p = ptable.proc; p < &ptable.proc[NPROC]; p++){
     if(p->pid==pid){
       p->priority = nice;
+      enqueue(p);
       release(&ptable.lock);
       return 0;
     }
   }
 
+  enqueue(p);
   release(&ptable.lock);
   return -1;
 }
