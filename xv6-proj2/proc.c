@@ -53,6 +53,18 @@ enqueue(struct proc* p) {
   else rqueue.tail = p;
 }
 
+static void
+dequeue(struct proc* p) {
+  if(p->prv) p->prv->nxt = p->nxt;
+  else rqueue.head = p->nxt;
+
+  if(p->nxt) p->nxt->prv = p->prv;
+  else rqueue.tail = p->prv;
+
+  p->prv = 0;
+  p->nxt = 0;
+}
+
 void
 pinit(void)
 {
@@ -385,17 +397,18 @@ scheduler(void)
 
     p = rqueue.head;
     
-    c->proc = p;
-    switchuvm(p);
-    p->state = RUNNING;
+    if(p) {
+      c->proc = p;
+      switchuvm(p);
+      p->state = RUNNING;
 
-    swtch(&(c->scheduler), p->context);
-    switchkvm();
+      swtch(&(c->scheduler), p->context);
+      switchkvm();
 
-    c->proc = 0;
+      c->proc = 0;
 
-    release(&ptable.lock);
-
+      release(&ptable.lock);
+    }
   }
 }
 
