@@ -14,11 +14,44 @@ struct {
 
 static struct proc *initproc;
 
+struct {
+  struct proc *head;
+  struct proc *tail;
+} rqueue;
+
 int nextpid = 1;
 extern void forkret(void);
 extern void trapret(void);
 
 static void wakeup1(void *chan);
+
+static void
+enqueue(struct proc* p) {
+  struct proc* curr = rqueue.head;
+  
+  while(!curr) {
+    if(curr->priority > p->priority) break;
+    if(curr->priority == p->priority &&
+       curr->pid < p->pid) break;
+    
+    curr = curr->nxt;
+  }
+
+  if(curr) {
+    p->prv = curr->prv;
+    p->nxt = curr;
+  }
+  else {
+    p->prv = rqueue.tail;
+    p->nxt = NULL;
+  }
+
+  if(p->prv) p->prv->nxt = p;
+  else rqueue.head = p;
+
+  if(p->nxt) p->nxt->prv = p;
+  else rqueue.tail = p;
+}
 
 void
 pinit(void)
@@ -151,6 +184,12 @@ userinit(void)
   acquire(&ptable.lock);
 
   p->state = RUNNABLE;
+  
+  rqueue.head = p;
+  rqueue.tail = p;
+  
+  p->nxt = NULL;
+  p->prv = NULL;
 
   release(&ptable.lock);
 }
