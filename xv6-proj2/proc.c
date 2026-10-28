@@ -29,7 +29,7 @@ static void
 enqueue(struct proc* p) {
   struct proc* curr = rqueue.head;
   
-  while(!curr) {
+  while(curr) {
     if(curr->priority > p->priority) break;
     if(curr->priority == p->priority &&
        curr->pid < p->pid) break;
@@ -43,7 +43,7 @@ enqueue(struct proc* p) {
   }
   else {
     p->prv = rqueue.tail;
-    p->nxt = NULL;
+    p->nxt = 0;
   }
 
   if(p->prv) p->prv->nxt = p;
@@ -60,6 +60,9 @@ dequeue(struct proc* p) {
 
   if(p->nxt) p->nxt->prv = p->prv;
   else rqueue.tail = p->prv;
+
+  if (rqueue.head) rqueue.head->prv = 0;
+  if (rqueue.tail) rqueue.tail->nxt = 0;
 
   p->prv = 0;
   p->nxt = 0;
@@ -196,12 +199,7 @@ userinit(void)
   acquire(&ptable.lock);
 
   p->state = RUNNABLE;
-  
-  rqueue.head = p;
-  rqueue.tail = p;
-  
-  p->nxt = NULL;
-  p->prv = NULL;
+  enqueue(p);
 
   release(&ptable.lock);
 }
@@ -607,9 +605,9 @@ setnice(int pid, int nice)
 
   struct proc *p;
   acquire(&ptable.lock);
-  dequeue(p);
   for( p = ptable.proc; p < &ptable.proc[NPROC]; p++){
     if(p->pid==pid){
+      dequeue(p);
       p->priority = nice;
       enqueue(p);
       release(&ptable.lock);
@@ -617,7 +615,6 @@ setnice(int pid, int nice)
     }
   }
 
-  enqueue(p);
   release(&ptable.lock);
   return -1;
 }
