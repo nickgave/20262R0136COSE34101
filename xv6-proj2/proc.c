@@ -262,8 +262,11 @@ fork(void)
   acquire(&ptable.lock);
 
   np->state = RUNNABLE;
+  enqueue(np);
 
   release(&ptable.lock);
+
+  yield();
 
   return pid;
 }
@@ -375,7 +378,7 @@ scheduler(void)
   
   for(;;){
     // Enable interrupts on this processor.
-    sti();
+    sti();    
 
     // Loop over process table looking for process to run.
     acquire(&ptable.lock);
@@ -433,7 +436,9 @@ void
 yield(void)
 {
   acquire(&ptable.lock);  //DOC: yieldlock
-  myproc()->state = RUNNABLE;
+  struct proc *p = myproc();
+  p->state = RUNNABLE;
+  enqueue(p);
   sched();
   release(&ptable.lock);
 }
