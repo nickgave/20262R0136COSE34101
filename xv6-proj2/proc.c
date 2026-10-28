@@ -607,10 +607,12 @@ setnice(int pid, int nice)
   acquire(&ptable.lock);
   for( p = ptable.proc; p < &ptable.proc[NPROC]; p++){
     if(p->pid==pid){
-      dequeue(p);
+      int brq = 0;
+      if(p->state == RUNNABLE) { brq = 1; dequeue(p); }
       p->priority = nice;
-      enqueue(p);
+      if(p->state == RUNNABLE) enqueue(p);
       release(&ptable.lock);
+      if(brq) yield();
       return 0;
     }
   }
