@@ -202,6 +202,12 @@ fork(void)
   np->parent = curproc;
   *np->tf = *curproc->tf;
 
+  // Set child's priority
+  if(curproc->priority >= 15)
+    np->priority = (curproc->priority) / 2;
+  else
+    np->priority = (curproc->priority) + 1;
+
   // Clear %eax so that fork returns 0 in the child.
   np->tf->eax = 0;
 
