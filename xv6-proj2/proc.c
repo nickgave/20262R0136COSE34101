@@ -68,6 +68,40 @@ dequeue(struct proc* p) {
   p->nxt = 0;
 }
 
+static int
+ishigher(struct proc *a, struct proc *b) {
+  if (a == 0) return 0;
+  if (b == 0) return 1;
+ 
+  if (a->priority != b->priority)
+    return a->priority < b->priority;
+
+  return a->pid > b->pid;
+}
+
+void
+preempt(void) {
+  struct proc *p, *cur = myproc();
+  int n = 0;
+
+  if(!cur) return;
+
+  acquire(&ptable.lock);
+
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+    if((p->state == RUNNING || p->state == RUNNABLE)
+        && ishigher(p, cur))
+      n++;
+
+  if(cur->state == RUNNING && n >= ncpu) {
+    cur->state = RUNNABLE;
+    enqueue(cur);
+    sched();
+  }
+
+  release(&ptable.lock);
+}
+
 void
 pinit(void)
 {
@@ -276,8 +310,6 @@ fork(void)
 
   release(&ptable.lock);
 
-  yield();
-
   return pid;
 }
 
@@ -286,7 +318,6 @@ fork(void)
 // until its parent calls wait() to find out it exited.
 void
 exit(void)
-{
   struct proc *curproc = myproc();
   struct proc *p;
   int fd;
@@ -604,17 +635,24 @@ setnice(int pid, int nice)
     return -1;
 
   struct proc *p;
+  struct proc *before, *after;
+  int resched;
 
   acquire(&ptable.lock);
   
   for( p = ptable.proc; p < &ptable.proc[NPROC]; p++){
     if(p->pid==pid && p->state!=UNUSED && p->state!=ZOMBIE){
-      int changed = (p->priority != nice);
+      if(p->priority == nice) {
+        release(&ptable.lock);
+	return 0;
+      }
+
       if(p->state == RUNNABLE) dequeue(p);
       p->priority = nice;
       if(p->state == RUNNABLE) enqueue(p);
+      
       release(&ptable.lock);
-      if(changed) yield();
+      
       return 0;
     }
   }
